@@ -1,0 +1,267 @@
+----
+RRC
+----
+-> The major role of RRC is to control(configure) all the Radio Resources (PHY, MAC, RLC, PDCP) to make it possible 
+   to communicate between UE and the base station (e.g, gNB, eNB, NB, BTS etc).
+RRC messages are used as signalling between UE and Base station.
+	-> can be used to encapsulate NAS messages for their transfer between UE and eNodeB
+NAS(Non Access Stratum) messages are used as signalling between UE and MME.
+----
+
+We need to form SRB to have a tunnel to transfer DRB
+SRB0: Used for initial access,RRC connetion establishment
+[RRC messages using the CCCH logical channel]
+CCCH(Common Control Channel): for transmitting control information between UEs and network.
+			      used for UEs having no RRC connection with the network.
+SRB1: for RRC messages (which may include a piggybacked NAS message) as well as 
+	for NAS messages prior to the establishment of SRB2, all using DCCH logical channel;
+[传输的数据比较可靠些，大多数的数据都是走srb1，除非sbr1命令去sbr0]
+SRB2: for NAS messages, all using DCCH logical channel. SRB2 has a lower-priority 
+	than SRB1 and is always configured by the network after security activation;
+SRB : NAS -> RRC -> PDCP -> RLC -> MAC -> PHY
+【每个UE内设的SIM卡然后这个卡是在运营商开户了的，然后这些开户信息是储存在核心网络的，所以UE需要去到核心网去做认证因此SRB2就需要】
+
+----------
+RRC Status
+----------
+-> RRC_CONNECTED & RRC_IDLE used in LTE and RRC_INACTIVE has been introduced to speed up transition to RRC_CONNECTED
+1. RRC_CONNECTED
+	-> A UE in this state has an RRC connection with a gNodeB.
+2. RRC_IDLE [没有接入任何网络]
+	-> A UE in this state does not have an RRC connection with a gNodeB.
+3. RRC_INACTIVE
+	-> A UE in this state suspends data processing but the gNodeB retains UE context information.
+|---------------------------------------------------------------------------------------------------------------------------------
+|https://www.sharetechnote.com/html/5G/5G_RRC_Overview.html#:~:text=Unlike%20LTE%2C%20in%20NR%20there%20is%20a%20addition,quickly%20switch%20back%20to%20CONNECTED%20states%20when%20necessary.
+|-----------------------------------------------------------------------------------------------------------------------------------------
+|  ----------->	NR RRC_CONNECTED<------------------------------------------------------------------->EUTRA RRC_CONNECTED
+|  |	      		^					Handover			
+|  |	      		|							
+|  |	      		| Resume/Release 【如果基站判定很久没有素材会被判定ｉｎａｃｔｉｖｅ状态】	
+|  |	      		| with suspend　　【但是基站还是会有你的信息，所以可以快连接回去】	
+|  |	      		|								
+|  |	      		v									
+|  |		RRC_INACTIVE									
+|  |Establish/	        |									
+|  |Release		|									
+|  |	   		|Release							
+|  |          		|									
+|  |          		|									
+|  |	      		v								
+|  |---------------->RRC_IDLE<---------------------------------------------------------------------
+|----------------------------------------------------------------------------------------------------------
+	--> RRC_CONNECTED to RRC_INACTIVE
+		-> Occurs when the UR is inactivity for a period or UE complete its data or voice sessions.
+	--> RRC_INACTIVE to RRC_IDLE
+		-> OCcurs when there is no any active connection in between UR and the network.
+
+	#假设现在在RRC_CONNECTED状态，基站很久没有接收到素材然后判定为ｉｎａｃｔｉｖｅ进入RRC_INACTIVE状态。
+　	 倘若ＵＥ越走越远以致没有ａｃｔｉｖｅ的connection，那么ＵＥ会进入IDLE。
+	　【可能性１：ＢＳ接受不到你的信息了；可能性２：ＢＳ负载量高然后不允许进入】
+	　之后ＵＥ会ｒｅａｄ有没有其他的讯号，在此有可能会读到其他基站的；也有可能会读到４Ｇ的
+
+
+=========================
+|SA Mobility Management |
+=========================
+-> mobility management involves intra-RAT and inter-RAT mobility management
+-> 
+
+
+==========================
+|NSA Mobility Management |
+==========================
+-> TWO RRC satet involved in NSA networking: NSA RRC_CONNECTED & NSA RRC_IDLE
+	 -----------------------------------------------
+	 |Why is the RRC_INACTIVE state not supported? |
+	 -----------------------------------------------
+	  -> because relevant standards are undefined and the industry is immature.
+		Option 3: EPC is used as the core network and no RRC_INACTIVE standards are defined for the EPC
+		Option 7: Most vendors' eNodeBs, including Huawei's, are not well adapted to the RRC_INACTIVE state
+		Option 4: 5G is not yet that mature in the current early stage of 5G deployment, and this networking is not used on the live network. 
+			  RRC_INACTIVE is generally not discussed.
+
+============================
+|Overall Handover Mechanism|
+============================
+-> The same handover mechanism is shared between SA networking and NSA networking with the only difference lying in the signaling procedures in each phase of a handover process.
+Process of handover:
+	1. The gNodeB decides whether to start a handover process
+		-> After an RRC connection is set up between a UE and a gNodeB, the gNodeB delivers related measurement configurations to the UE.
+		-> When the gNodeB detects a qualified target cell based on the measurement report from the UE, the gNodeB instructs the UE to execute a handover.
+		
+		Two main factors kickstart handover start decision:
+		  -> the handover function has been enabled
+		  -> signal quality of the serving cell meets certain requirements.[Event 1(signal>threshold) & Event 2(signal<threshold)]
+		
+		Two processing mode for handover:-
+		1. Measurement-based mode: UE measures the signal quality and report the results to gNodeB, 
+					   gNodeB then uses the measurement report to generate a target cell list.
+
+		2. Blind mode: The gNodeB generates a target cell or frequency list based on priority parameter configurations without instructing UEs 
+				to measure the signal quality of candidate target cells.
+		Eg:- When UE moves at high speed and UE moved out of the source cell before measurement completed, then it will increasing the service drop rate.
+		      To prevent this, blind mode can be used to quickly implement a handover for the UE.
+
+	2. The gNodeB sends measurement configurations to the UE through an RRCReconfiguration message.
+		-> Measurement objects
+			- objects on which UEs perform measurement, including SSB frequency, SSB SCS, SMTC, whitelisted cells, and blacklisted cells.
+		-> Measurement gaps
+			- a time period during which a UE performs measurement on non-serving frequencies. 
+			  It is involved only in inter-frequency and inter-RAT measurements.
+		-> Reporting configurations
+			- consists the criteria for triggering measurement reporting and the format of a measurement report.
+		----------------------------------------------------------------------------
+		A1: (signal serving > threshold = stop handover) 
+		    The signal quality of the serving cell exceeds a specific threshold.
+		A2: (signal serving < threshold = start handover) 
+		    The signal quality of the serving cell drops below a specific threshold.
+
+		A3: (signal neighboring > signal serving = handover execution: s->n) 
+		    The signal quality of a neighboring cell is higher than that of the serving cell by a certain offset.
+		A4: (signal neighboring > threhold = handover execution: s->n) 
+		    The signal quality of a neighboring cell exceeds a specific threshold.
+		A5: (signal serving < threshold 1 && signal neighboring > threshold 2 = handover execution: s->n) 
+		    The signal quality of the serving cell drops below threshold 1 and the signal quality of a neighboring cell exceeds threshold 2.
+		A6: (neighboring cell > Secondary cell = handover execution: s->n) 
+		    The signal quality of a neighboring cell is higher than that of the secondary cell by a certain offset.
+		B1: (Neighbouring cell > Serving cell = handover execution: s->n) 
+		    The signal quality of an inter-RAT neighboring cell exceeds a specific threshold.
+		B2: (Serving cell < Threshold 1 && Neighbour cell > Threshold 2 = handover execution: s->n) 
+		    The signal quality of the serving cell drops below threshold 1 and the signal quality of an inter-RAT neighboring cell exceeds threshold 2.
+
+
+		-> Triggering quantity
+			- Triggering quantity refers to the policy that triggers event reporting.
+
+			RSRP(reference signal received power): indicates the strength of the received reference signals.
+			RSSI(received signal strength indication): indicates the total signal strength of the current channel.
+			RSRQ(reference signal received quality): indicates the signal-to-noise ratio (SNR) and interference level of the current channel and is similar to the result of RSRP/RSSI.
+			SINR(signal to interference plus noise ratio): indicates the signal-to-interference ratio (SIR) of the current channel and is an important indicator for measuring UE performance.
+		-> Measurement IDs
+			- A measurement ID links a measurement object with a reporting configurations as a set. 
+
+	3. The UE performs measurement based on measurement configurations and then generates cell measurement results.	
+
+	4. The UE reports the measurement results to the gNodeB through a measurement report.
+
+	5. The gNodeB decides whether a new serving cell is suitable based on the measurement report.
+
+	6. The gNodeB finds a suitable new serving cell and instructs the UE to execute a handover.
+
+========================-----
+Handover Signaling Procedures
+========================-----
+1. SA networking
+	-> handovers are classified into:- 
+		- intra-base station handovers
+		- Xn-based inter-base station handovers
+		- NG-based inter-base station handovers
+
+1.1 intra-base station handovers
+	-> This handover is occurs between the cell is same base station.
+	-> Measurement Phase:
+		https://www.techtrained.com/centralized-unit-distributed-unit-cu-du-split-base-station-5g-systems-base-station-architecture/#:~:text=inter-gNodeB%20DU%20is%20responsible%20for%20allocating%20C-RNTI%20to,plane%20Signalling%20and%20User%20Plane%20Data%20in%20CU-DU
+		# gNodeB-CU(Central Unit): handles higher-layer processing[RRC, SDAP, PDCP] and control function
+		# gNodeB-DU(Distribute Unit): PLC, MAC, PHY
+					      responsible for allocating C-RNTI（Cell Radio-Network Temporary Identifier） to a UE during Random Access
+		# Both connnected ny F1 and F1AP is used to transmitted configuration information of radio bearers between the CU and DUs
+		1. The gNodeB-CU sends an RRCReconfiguration message to the UE
+		2. The UE sends an RRCReconfigurationComplete message to the gNodeB-CU.
+		3. The UE sends a neighboring cell measurement report to the gNodeB-CU.
+	-> Decision Phase:
+		4. Based on the PCI in the measurement report, the gNodeB-CU determines that the target cell and the serving cell are served by the same gNodeB, 
+		   and initiates an intra-base station handover
+	-> Execution Handover:
+发setup		5. The gNodeB-CU sends a UE CONTEXT SETUP REQUEST message to the gNodeB-DU to request new UE resources for the target cell.
+回复可以setup	6. The gNodeB-DU successfully allocates resources and sends a UE CONTEXT SETUP RESPONSE message to the gNodeB-CU.
+发modification	7. The gNodeB-CU sends a UE CONTEXT MODIFICATION REQUEST message to the gNodeB-DU to signal an indication of stopping L2 scheduling in the source cell.
+回复modified了	8. The gNodeB-DU sends a UE CONTEXT MODIFICATION RESPONSE message to the gNodeB-CU.
+		9. The gNodeB-CU sends an RRCReconfiguration message to the UE to indicate the target frequency for handover, PCI(physical cell identifier), C-RNTI
+			# C-RNTI: used for identifying and distinguishing a UE within a cell for radio communication, allow to track UE, 
+		10. The UE initiates a non-contention-based random access to the target cell by sending MSG1
+		11. The gNodeB-DU replies with MSG2.
+		12. The UE sends an RRCReconfigurationComplete message to the gNodeB-CU and access the target cell.
+		13. The gNodeB-CU sends a UE CONTEXT RELEASE COMMAND message to the gNodeB-DU then the source cell releases the UE which has been handed over to the target cell.
+		14. The gNodeB-CU sends an RRCReconfiguration message that includes measurement configurations of the target cell to the UE after the UE is handed over to the target cell.
+		15. The UE sends an RRCReconfigurationComplete message to the gNodeB-CU after receiving new measurement configurations.
+	#same process for inter-base but got source DU and target DU
+ 
+1.2 Xn-based inter-base station handovers
+	Xn is the interface between two base station, so this handover will be include two gNodeB and include AMF
+	-> Measurement Phase:	
+		1. The source gNodeB will send RRCReconfiguration message to the UE to deliver measurement configurations include measurement object, measurement reporting con
+		2. The UE sends an RRCReconfigurationComplete message to the source gNodeB.
+		3. The UE performs measurement based on the received measurement configurations. The UE sends a measurement report to the source gNodeB when event conditions are met.
+	-> Decision Phase:
+		4. The source gNodeB selects a handover policy and the target cell/frequency based on the received measurement report.
+		   gNodeB会根据报告来选policy和target cell	
+	-> Execution Handover:
+		5. If need handover,  source gNodeB sends a HANDOVER REQUEST message to the target gNodeB serving the selected target cell over the Xn interface to initiate a handover request
+		 	如果决定要handover然后就会发送handover request给target gnodeB
+		6. The target gNodeB applies admission control after receiving the handover request，then allocates a UE instance and transmission resources.
+			之后targetB 会applied admission control以便是符合UE的
+		7. The target gNodeB sends a HANDOVER REQUEST ACKNOWLEDGE message to the source gNodeB, indicating that the incoming handover is allowed.
+			tagetB会发acknowledge告诉sourceB它同意handover
+		8. The source gNodeB sends an RRCReconfiguration message to the UE, instructing the UE to execute a handover to the target cell.
+			sourceB会指示UE执行handover去targetB
+		9. UE initiates a non-contention-based random access (for transmited their initial access request) to the target cell served by the target gNodeB by sending MSG1
+			UE 通过发送随机接入向targetB的cell
+		10. The target gNodeB replies with MSG2 to UE.
+			targetB回复ok
+		11. The UE sends an RRCReconfigurationComplete message to the target gNodeB to indicate handover air interface is completed
+			URE回复complete mssg 来说明handover ok了
+		12. The target gNodeB sends a PATH SWITCH REQUEST message to the AMF to notify the serving cell is changed. [The message include target cell ID and list of switched PDU session]
+			告诉AMF，UE已经更改了cell；list of switched PDU session is to ensure continuity of the communication messages. 
+		13. The AMF sends a PATH SWITCH REQUEST ACKNOWLEDGE message to the target gNodeB.
+			AMF告诉targetB，他已经知道了
+		14. The target gNodeB sends a UE CONTEXT RELEASE message to the source gNodeB.
+			targetB通知sourceB把UE的context release了
+		15. The gNodeB sends an RRCReconfiguration message that includes measurement configurations of the target cell to the UE after the UE is handed over to the target cell.
+		16. The UE sends an RRCReconfigurationComplete message to the gNodeB after receiving new measurement configurations.
+1.3 Ng-based handovers
+	-> Ng is between base station and 5GC/AMF
+	-> Measurement Phase:	
+		1. 
+		2. 
+		3. 
+
+	-> Decision Phase:
+
+	-> Execution Phase:
+
+
+2. NSA networking
+	-> five scenarios are involved:-	
+		- SgNB addition
+			-> UE connects to eNB but come to 5G NR coverage, and the gNB can be added to the connection
+			-> This is to ensure the UE can access 5G NR seervices while still maintaning its LTE connection.
+		- SgNB modification
+			-> A process for existing connection involved secondary gNB are modified
+			case: When UE is moving to another 5G cell and exceed the serving 5G cell so report event A3 to do modification
+		- MeNB handover
+			-> A process in 5G when UE is handover from one Master eNB to another [can be intra(same eNB,different cell) / inter(different eNB and the cell from different eNB)]
+		- SgNB change
+			-> A process for switching from one Secondary gNB to another gNB
+		- SgNB release
+			-> A procedure in 5G when the connection between UE and secondary gNB is terminated.
+			case: the UE is ready to out from the coverage of 5G.
+============================================
+|Dual Active Protocol Stack (DAPS) handover|[https://ieeexplore.ieee.org/document/9763399]
+============================================
+-> DAPS is proposed as a mobility enhancement solution
+-> During DAPS handover execution, the UE retains its user-plane connection with the source cell for data transmission with the source cell until a connection is set up between the UE and the target cell.
+	-> DAPS let UE  exchange data with the source and target cells simultaneously within a short period of time
+	-> The UE continues receiving downlink user data from the source cell until the source cell is released.
+	-> The UE continues transmitting uplink user data to the source cell until it succeeds in random access in the target cell.
+
+============================
+|Conditional HandOver (CHO)|
+============================
+-> an enhancement to basic NR handovers to reduce handover failures in the preceding cases.
+-> some failure condition:-
+	-> The measurement report from the UE cannot reach the base station.
+	-> After receiving a measurement report, the HO command cannot be sent to UE.
+-> HOW?
+	-> With CHO, the source base station can delivers a HO command to UE before the radio environment between UE and sourceB going to worst.
+	-> 

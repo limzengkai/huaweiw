@@ -1,0 +1,399 @@
+===============
+NSA Networking
+===============
+* Control plane: Responsible for Signaling & control function such as establish, maintance, and terminate sessions.
+		 It handle like Network mangement, signaling, authentictaion, mobility, resourse allocation.
+* User plane: Responsible for carry user data traffic [web, video, file, etc]
+* Signaling anchor: Responsible for managing control plane signaling for UE that is connected both LTE and 5G.
+		    Allow smoother transition from LTE to 5G
+* Data split anchor: User plane split between LTE and 5G network. So it's the point the decision ths is made on how to handle user plane traffic
+-> Option 3 Series Architectures with NSA NR
+- Option 3:
+	-> In Option 3, data split anchor and Signaling anchor is on eNode B
+	-> It distributes 5G data to the gNodeB or directly sends data to UEs
+	-> all data from the core network to 5G UEs must be processed by the eNodeB
+	# However, existing eNodeB hardware cannot meet the data transmission requirements of 5G services 
+	  bcuz it require larger bandwidths and higher rates than 4G services
+	-> To solve this problem, the eNodeB hardware needs to be upgraded and the 4G network needs to be reconstructed in Option 3
+	:- This will increase the network construction costs then Option 3 is not recommended for NSA networking.
+
+- Option 3x:
+	-> In Option 3x, the gNodeB is the data split anchor.eNodeB is still Signaling anchor
+	-> Thus, the amount of work involved in 4G network reconstruction is reduced
+	-> Bcuz, the 5G air-interface service data is directly transmitted to the core network through the gNodeB
+	-> The large 5G air-interface bandwidth guarantees data transmission, maximizing the bandwidth utilization.
+	-> In this option,  the gNodeB can detect radio signal changes in real time and promptly adjust the amount of service data to be distributed, 
+	   ensuring user experience of 5G services.
+#Note: In Option 3, large 5G air-interface bandwidth is not fully utilized bcuz The eNodeB hardware capability limits the amount of service data over the S1-U interface.
+
+- Option 3a:
+	-> In Option 3a, EPC is the data slpit anchor
+	-> EPC is connected to a radio access network(RAN)[base station], and it has no direct connection over the air interface
+	   so it cannot detect in real time for the radio condition changes on the RAN side.
+	-> As a result, the EPC cannot dynamically adjust the amount of service data to be distributed based on the real-time radio condition changes
+	-> However, UE is actively mobile and the radio condition will continously change when they move.
+	-> It distributes 5G service data to the eNodeB and gNodeB based on the preset configurations[Depend on 4G and 5G cell capabilities]
+So User will faced two condition:
+1. When the 5G radio signal quality is good, the EPC does not increase the amount of data distributed to the gNodeB.
+2. When the 5G radio signal quality is poor, the EPC does not reduce the amount of data distributed to the gNodeB, causing a large number of packets to be lost.
+------------------------------------------------------------------------
+-> Option 7 Series Architectures with NSA NR
+	-> This connecting of Option 7
+	-> 4G core network in Option 3 series architectures needs to be upgraded to a 5G core network
+	-> the eNodeB to an eLTE eNB for interconnection with the 5G core network
+----> Option 7, 7x, 7a are similiar and Option 7x is recommended when an Option 7 series architecture is required during the evolution to 5G
+--------------------------------------------------------------------------
+-> Option 4 Series Architectures with NSA E-UTRA
+	-> Same as Option 7, but Option 4 only got 4 and 4a. an eLTE eNB for interconnection with the 5G core network, able to maximize the eNodeB utilization
+	-> In option 4, gNB serve as signaling anchor
+- Option 4:
+	-> In Option 4, the eLTE eNB provides the 4G air-interface bandwidth, supporting data transmission for access services. 
+	   User anchor and signaling anchor are on gNB
+	   All user-plane data transmitted to or from the 5GC needs to pass through the gNodeB.
+	-> This architecture does not required eLTE eNB hardware upgrades or reconstruction
+- Option 4a:
+	-> eLTE eNB provides the 4G air-interface bandwidth and directly exchanges data with the 5GC
+	-> It will have same problem with Option 3a:  5GC as the data split anchor, cannot detect the real-time radio condition changes on the RAN side.
+==========
+NR layer
+==========
+1. Layer 1
+-> This layer include Physical layer
+
+
+2. Layer 2
+-> This layer include MAC[Media Access Control], RLC[Radio Link Control] and PDCP[Packet Data Convergence Protocol] layer
+
+
+3. Layer 3
+-> This layer include RRC[Radio resource controller], SDAP [Service Data Adaptation Protocol] 
+---------------------------------------------
+|User-Plane Protocol Stack for Uu Interface |
+---------------------------------------------
+From top to bottom:
+- The SDAP layer is responsible for mapping quality of service (QoS) flows to data radio bearers (DRBs).
+- The PDCP layer is responsible for IP packet header compression, encryption, and integrity protection.
+- The RLC layer is responsible for data segmentation and reassembly.
+- The MAC layer is responsible for multiplexing of logical channels, hybrid automatic repeat request (HARQ) retransmission, and scheduling-related functions.
+- The PHY is responsible for coding, decoding, modulation, demodulation, multi-antenna mapping, and other functions.
+----
+-> SDAP(Service Data Adaptation Protocol) layer:
+	-> Responsible for QoS Flow Identifier (QFI) marking in uplink and downlink data packets
+	-> Responsible for Mapping between QoS flows and Data Radio Bearer (DRBs)
+	1. UE can allowed to establish one or multiple PDU sessions and each PDU is carried on user plane tunnel which can transmit 1 or multiple QoS flow
+	2. QoS flows are mapped to previously established or newly established DRBs
+	3. data in a PDU session is first mapped to a QoS flow and marked with a QFI
+	4. After one or multiple QoS flows are mapped to a DRB, the data is sent to the PDCP layer
+# Radio Bearers: A logical communication channel established between UE nad base station.
+# DRB is a logical connection between UE and core network.
+# SRB
+----
+-> PDCP(Packet Data Convergence Protocol) Layer:
+	-> This layer is mainly used to transmit radio bearers mapped on logical channels such as dedicated control channel (DCCH) and dedicated traffic channel (DTCH).
+# DCCH: A logical channel used for transmitting control information between UE and network. [It also include call setup, handover, and other control function]
+# DTCH: A logical channel used for transmitting user data between UE and network.
+
+
+Process: 
+1. After the downlink data from the SDAP layer is received at the PDCP layer, the data is stored in a buffer at the PDCP layer, 
+   and each data packet is allocated an SN(Sequence Number) based on its arrival sequence at the PDCP layer.
+2. Header compression is performed on user-plane data to reduce the number of bits transmitted over the wireless interface.
+3. Integrity protection is performed on user-plane data obtained after header compression and 
+   control-plane data to ensure that integrity verification is performed at the receive end.[optional]
+4. The data on which integrity protection is performed is ciphered to ensure confidentiality of data transmission between the transmit end and the receive end.
+5. PDCP header is add to the data including the deciphering information by UE and SN used for retransmission.
+#For retransmission, data will be duplicated and transmitted in multiple cell.
+6. If UE has accessed an LTE or NR network, he reported UE capability supports NR dual connectivity (DC), the neighboring cell list contains NR cells that support DC, and the link status is normal, then DC can be established for the UE.
+   If a UE is connected to two cell groups(a master cell group and a secondary cell group[Two different gNodeBs]), the PDCP layer supports data allocation between cell groups before transmitting data to the RLC layer.
+
+----
+
+-> RLC(Radio Link Control) layer:
+	-> The RLC layer communicates with the PDCP layer through RLC channels and communicates with the MAC layer through logical channels
+	-> Function: Segmentation and reassembly of RLC service data units(UM & AM), Re-segmentation of RLC SDUs(AM), Error correction through ARQ(AM), Duplicate detection(AM)
+Three mode of RLC:
+1. TM(transparent mode): data is transparently transmitted without being processed [without adding any RLC header or segmenting the data]
+2. UM（Unacknowledged Mode）: data is segmented into multiple pieces that are suitable for transmission on logical channels AND RLC header are added
+3. AM（Acknowledged Mode）: data is segmented into multiple pieces that are suitable for transmission on logical channels, RLC headers are added, and retransmission is supported
+# RLC header mainly includes information about how data is segmented and where the segmented data is located
+
+Different logical channels use different data transmission modes:-
+1. The broadcast control channel (BCCH), paging control channel (PCCH), and CCCH can use TM only.
+2. The DCCH can use AM only.
+3. The DTCH can use UM or AM, which is indicated by RRC messages.
+
+# TM and UM are sensitive to delay yet insensitive to errors, as well as providing no feedback. Such characteristics make these two modes applicable to real-time services. 
+# AM is insensitive to delay but sensitive to errors, and does provide feedback. This makes the mode applicable to non-real-time services or control signaling
+
+Process in UM and AM:
+1. The RLC layer will receive RLC SDU from PDCP layer and the RLC layer will be do segmentation to form RLC PDU that contain RLC header.
+2. Then it will store the RLC PDU inside the tranmission buffer.
+3. Once the MAC layer indicated that can be do the transmission to the corresponding logical channel then it will concatenates RLC PDus in the buffer.
+# However, the MAC layer specifies the size of RLC PDUs that can be sent, but not every concatenated RLC PDU can be completely sent
+# The data volume of last PDU > remaning data volumen can be sent, then need to segmented again and RLC header & PDU will be regenerated.
+-->  Compared with LTE, the RLC layer in NR cannot ensure in-order delivery of data to the PDCP layer.
+     It will retransmitted: RLC layer directly sends incomplete data to the PDCP layer, and the PDCP layer is responsible for the in-order delivery of data.
+
+-> MAC layer
+	-> Responsible for mapping logical channels to transport channels and scheduling radio resources. 
+	-> Function: 
+		Mapping between logical channels and transport channels [Mean manage the transferring the data from upper layer to lower layer]
+		Multiplexing and demultiplexing of logical channels[]
+		Scheduling
+		error correction through HARQ;
+		logical channel prioritisation.[only for the uplink side]
+	-> The MAC layer provides services to the RLC layer through logical channels.
+	Types of logical channels:-
+	1. Control channel:
+		1. BCCH: used for transmitting control and configuration information required by a UE before the UE accesses a network.
+		2. PCCH: used for paging UEs whose location at cell level is unknown to the network
+		3. CCCH: used for transmitting control information during random access. [used by UEs that do not have RRC connections]
+		4. DCCH: used for transmitting control information between UEs and the network. [used by UEs that have RRC connections]
+
+	2. Traffic channel:
+		1. DTCH is used for transmitting user data between UEs and the network.
+
+	Types of Transport channel:- [PHY provides services for the MAC layer through transport channel]
+	1. Uplink transport channel:
+		1. random access channel (RACH):  it does not carry transport blocks and carries only limited control information.
+		2. uplink shared channel (UL-SCH) is used for transmitting uplink data.
+	2. Downlink transport channel:
+		1. broadcast channel (BCH): used for transmitting master information blocks (MIBs).
+		 	This channel is characterized by a fixed transport format and is required to be broadcast in the entire coverage area of a cell.
+		2. paging channel (PCH): used for transmitting paging messages from the PCCH
+			This channel supports discontinuous reception and allows UEs to wake up only at a preconfigured time to receive paging messages
+		3. downlink shared channel (DL-SCH): used for transmitting downlink data and system information blocks (SIBs).
+# MAC SDU: mean PLC data + PDCP data + data
+- Multiplexing: It means multiplexing MAC SDUs from one or multiple logical channels onto a transport block (TB) to be delivered 
+		to the PHY through transport channels
+- Demultiplexing: demultiplexing MAC SDUs to one or multiple logical channels from the TB delivered from the PHY through transport channels.
+
+Process: 
+1. After receiving data from the RLC layer, the MAC layer maps logical channel data onto transport channels.
+2. Based on the radio link status of downlink/uplink channels, the MAC scheduler dynamically allocates time-frequency resources for the DL-SCH/UL-SCH.
+3. It will selects an appropriate transport format for each transport channel, and transmits data blocks to the PHY
+
+# The downlink scheduler dynamically controls which UEs are to be transmitted and allocates sets of resource blocks used for transmission on the DL-SCH to these UEs. 
+  The gNodeB controls the downlink transport format and multiplexing of logical channels.
+
+# The uplink scheduler controls which UEs transmit data on their corresponding UL-SCHs and which time-frequency resources are required.
+  -> uplink scheduling has one more procedure: logical channel prioritization. 
+     The logical channel prioritization procedure is applied whenever a new uplink data transmission is performed. 
+     The MAC layer allocates resources to logical channels based on their priorities.
+
+--> HARQ(Hybrid Automatic Repeat reQuest) https://www.sharetechnote.com/html/5G/5G_HARQ.html
+	-> One of the retranmission system to utilize the MAC
+	-> The transmission and reception process involves transmitting data, receiving ACK or NACK, and performing retransmissions if necessary.
+Process: [Failed transmission]
+	1. The gNB transmits PDSCH(physical downlink shared channel) with rv(redundancy version) 0 to the UE (User Equipment) over the PDSCH.
+	2. UE receives the data and performs error detection using the CRC(Cyclic Redundancy Check) and CRC fails.
+	3. UE sends a NACK message to the gNB through the PUCCH or PUSCH, indicating a decoding failure.
+	4. Based on the NACK, the gNB retransmits the data with a different RV to increase the likelihood of successful decoding.
+	5. UE receives the retransmitted data and performs error detection using the CRC [OK this time]. 
+	6. When UE decode data, it combines all the previous data stored in the buffer and the current data it just recieved, and then decode the combined data.
+	7. UE send ACK message to gNB
+
+
+-> Physical Layer
+	-> mainly responsible for coding, HARQ, modulation, multi-antenna processing, and mapping between signals and time-frequency resources.
+	- Function:-
+		CRC detection and indication: Cyclic redundancy codes are used to detect errors.
+		Code block segmentation: A code block is segmented into blocks of appropriate sizes.
+		Channel coding and decoding: This function is used to achieve error correction.
+		Rate matching: Matched transmission resources are allocated through bit selection and bit interleaving.		
+		Code block concatenation: Single code blocks are concatenated together to form a codeword.
+		Scrambling: Scrambling code sequences are used to randomize bit streams for reduced interference.
+		Channel mapping: Transport channels are mapped onto physical channels.
+		Modulation and demodulation: Modulation schemes such as binary phase shift keying (BPSK), quadrature phase shift keying (QPSK), 16 quadrature amplitude modulation (16QAM), 64QAM, 256QAM, 512QAM, 1024QAM are used to improve channel transmission efficiency.
+		Multiple-input multiple-output (MIMO): Technologies such as spatial multiplexing and diversity are used to increase the system capacity.
+		RF processing: Baseband signals are converted into RF signals.			
+				
+- Physical channels are classified into uplink and downlink physical channels:-
+	1. Uplink Physical channel
+		-> physical random access channel (PRACH): Used for random access
+		-> physical uplink shared channel (PUSCH): Used for transmitting uplink data
+		-> physical uplink control channel (PUCCH): Used for carrying uplink control information (UCI)
+			
+	2. Downlink Physical channel
+		-> physical broadcast channel (PBCH): used for carrying MIBs required for UEs to access the network.
+		-> physical downlink shared channel (PDSCH): used for transmitting downlink data, SIBs, and paging messages.
+		-> physical downlink control channel (PDCCH): used for carrying downlink control information (DCI) 
+			such as downlink scheduling information, uplink scheduling information, and power control commands.
+# DCI
+	 
+# UCI
+	Contents: 
+------------------------------------------------
+|Control-Plane Protocol Stack for Uu Interface |
+------------------------------------------------
+UE		gNodeB		AMF
+|NAS <------------------------->NAS
+|RRC<------------>RRC
+|PDCP<----------->PDCP
+|RLC<------------>RLC
+|MAC<------------>MAC
+|PHY<------------>PHY
+-------------------------------------
+From top to bottom:
+- non-access stratum (NAS) is located between the AMF in the core network and the UE. 
+  The NAS is responsible for registration management, session management, authentication control, and security control.
+- radio resource control (RRC) layer is responsible for control-plane processing related to the radio access netw
+- The PDCP layer is responsible for IP packet header compression, encryption, and integrity protection.
+- The RLC layer is responsible for data segmentation and reassembly.
+- The MAC layer is responsible for multiplexing of logical channels, hybrid automatic repeat request (HARQ) retransmission, and scheduling-related functions.
+- The PHY is responsible for coding, decoding, modulation, demodulation, multi-antenna mapping, and other functions.
+
+# RRC layer and lower layers are referred to as the access stratum (AS), and the layer higher than the RRC layer is referred to as the NAS.
+
+-> NAS
+	- used for connection and mobility management between the AMF(access and mobility management function) in the core network and the UE.
+	- the gNodeB only transparently transmits the messages sent by the UE to the AMF and cannot identify or modify these messages.
+
+-> RRC [https://www.prodevelopertutorial.com/lte-rrc-layer/]
+	- To ensure that data can successfully reach and exhcange in between UE and base station
+	- works as the message configuration center and control center
+	- Function:
+		1. System information broadcast: includes system information necessary for communication between UEs and cells.
+		2. RRC connection control: 
+		3. Mobility management: involves transmission of RRC context information.
+		4. Measurement configuration and reporting: involves setup, modification, and delivery of measurement information, and reception of measurement reports.
+		5. Transmission of UE capability information
+# A paging system in wireless communication is a method used to alert or notify a specific user or device within a wireless network.
+
+--> RRC states
+	- RRC_CONNECTED: An RRC connection is established between the UE and the gNodeB.
+	- RRC_IDLE: No RRC connection is established between the UE and the gNodeB.
+	- RRC_INACTIVE: A UE in this state suspends data processing but the gNodeB retains UE context information.
+
+	Process: 
+		1. UE in the RRC_IDLE state, if a gNodeB needs to send data to the UE but does not know the UE location, the core network needs to send a paging message to locate the UE before setting up a radio bearer and performing authentication.
+		2. The UE performs random access, sets up RRC connection, and enters the RRC_CONNECTED state before it can process data services.
+		3. RRC message will sent to UE via SRB and mapped to CCCH during connection setup; to DCCH once the connection is established
+
+		-----------------
+		|Hoe UR know which RRC message snet to itslef
+		------------------
+		1. The UE sends an RRC connection setup request[contain UE identity and setup cause] to the gNodeB on SRB0 through the CCCH.
+		2. After receiving the request, the gNodeB sends complete configuration information of SRB1 on SRB0 through the CCCH. [establishing SRB1 for subsequent RRC message transmission]
+		3. SRB1 also will contain the UE identity
+
+=====================
+|NG and Xn Interface| [https://networkbuildz.com/5g-interfaces/]
+=====================
+-> NG interface
+	- A logical interface between an NG-RAN and 5GC
+
+-> Xn interface
+	- A logical interface between gNodeBs, between ng-eNodeBs, or between a gNodeB and ng-eNodeB
+-> 5GC
+	- functions such as authentication, authorization, accounting, and end-to-end connection establishment.
+	- Network Element[NEs]:
+		1. access and mobility management function (AMF)
+		2. session management function (SMF)
+		3. user plane function (UPF)
+		4. policy control function (PCF)
+		5. unified data management (UDM)
+		6. authentication server function (AUSF)
+		7. network exposure function (NEF)
+		8. network repository function (NRF)
+		9. network slice selection function (NSSF)
+
+------------
+NG interface
+------------
+	-> NG-RAN node can be gNodeB or ng-eNodeB
+	-> NG interface is classified into NG-C and NG-U interfaces.
+		- NG-C(NG control-plane) interface is an interface between an AMF and gNodeB/ng-eNodeB, and can provide a reliable signaling transmission service.
+		- NG-U interface is an interface between a UPF and gNodeB/ng-eNodeB, and can provide a non-guaranteed data transmission service.
+	-> Protocol Stack of NG-C: 
+		|-------------------------------|
+		|	NG-AP			|
+		|-------------------------------|
+		|	SCTP			|
+		|	IP			|
+		|	Data link layer		|
+		|	Physical layer		|
+		|-------------------------------|
+	 - Stream Control Transmission Protocol (SCTP)
+		-> SCTP is a reliable datagram transmission protocol based on unreliable service transmission protocols.
+		-> It inherits the relatively perfect congestion control from TCP and improves its some weaknesses.
+	  	--------------------------------------
+	  	| Why use SCTP instead of TCP or UDP?|
+	  	--------------------------------------
+	   		-> no reliability measures for the UDP
+			-> TCP has poor performance in congestion control, real-time performance, and attack prevention.
+			-> SCTP features appropriate congestion control, defense against flooding and spoofing attacks, and better real-time performance
+			-> SCTP is more reliable and is used as the transmission protocol on the control plane.
+			-> SCTP is Very inconvenient (The processing procedure is complex. Therefore, this protocol is generally used for communication between internal modules of the system or between NEs.)
+	-> Protocol Stack of NG-U: 
+		|-------------------------------|
+		|	User-plane PDU		|
+		|-------------------------------|
+		|	GTP-U			|
+		|	UDP			|
+		|	IP			|
+		|	Data link layer		|
+		|	Physical layer		|
+		|-------------------------------|
+		- GTP-U
+			-> GPRS Tunnelling Protocol (GTP) is a group of IP-based communications protocols
+			-> GTP-U is the user plane of GTP and it used to encapsulate all user data and transmit the data through tunnels.
+			-> The data between tunnel endpoints is routed through IP addresses and UDP port numbers. [can use UTP/TCP]
+----------------------
+NG interface function
+----------------------
+-> Paging
+-> UE context management
+-> Mobility management
+
+
+
+------------
+Xn interface
+------------
+	-> Xn interface is a logical interface between gNodeBs, between ng-eNodeBs, or between a gNodeB and ng-eNodeB. 
+	-> It is similar to the X2 interface in LTE.
+	-> Xn interface is classified into Xn-C and Xn-U interfaces.
+		- Xn-C (control plane): It hosts functions such as Xn interface management and UE mobility management, and implements dual connectivity.
+		- Xn-U (user plane): It mainly provides the data forwarding and flow control functions.
+
+	-> Protocol Stack of Xn-C: 
+		|-------------------------------|
+		|	Xn-AP			|
+		|-------------------------------|
+		|	SCTP: ensure realiability	
+		|	IP			|
+		|	Data link layer		|
+		|	Physical layer		|
+		|-------------------------------|
+	-> Protocol Stack of NG-U: 
+		|-------------------------------|
+		|	User-plane PDU		|
+		|-------------------------------|
+		|	GTP-U			|
+		|	UDP: Ensure real-time data processing
+		|	IP			|
+		|	Data link layer		|
+		|	Physical layer		|
+		|-------------------------------|
+
+----------------------
+Xn interface function
+----------------------
+-> interface management and error handling (e.g. setup, reset, removal, configuration update)
+	-> Xn setup: initial setup of an Xn interface between two NG-RAN nodes
+	-> Xn reset: allows an NG-RAN node to inform another NG-RAN node that it has recovered from a failure.
+	-> Xn removal: allows two NG-RAN nodes to remove the respective Xn interface.
+	-> Xn configuration update: allows two NG-RAN nodes to update application layer data at any time.
+	-> Error indication: Reporting error
+		
+-> UE mobility management
+	-> Handover preparation: allows the exchange of information between source and target NG-RAN nodes in order to hand over a certain UE to the target NG-RAN node.
+	-> Handover cancellation: allows informing an already prepared target NG-RAN node that a prepared handover will not take place.
+	-> Retrieve UE context: used for an NG-RAN node to restore UE context from another one
+	-> RAN paging: allows an NG-RAN node to initiate the paging for a UE in inactive mode.
+	-> Data Forwarding control:  allows establishing and releasing transport bearers between source and target NG-RAN nodes
+-> Dual connectivity: enables usage of additional resources of a secondary node in the NG-RAN.
+-> Energy saving: 
+-> Resource coordination: enables coordination of cell resource usage between two NG-RAN nodes.
+-> Report of secondary RAT data volumes: 
